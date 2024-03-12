@@ -44,13 +44,13 @@ double g2(double x, double y) {
         res = 1;
     }
     else if (x == 1) {
-        res = exp(-x);
+        res = exp(-y);
     }
     else if (y == 0) {
         res = 1;
     }
     else if (y == 1) {
-        res = exp(-y);
+        res = exp(-x);
     }
     return res;
 }
