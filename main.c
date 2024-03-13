@@ -74,33 +74,20 @@ double** create_grid_with_borders(size_t N) {
     return grid;
 }
 
+
 double proccess_block(dirichlet_problem* dp, size_t i_block, size_t j_block) {
     double d = 0, temp, h = dp->h;
     double** u = dp->u;
     double** f = dp->f;
     size_t i_upper_left = i_block * BLOCK_SIZE + 1, j_upper_left = j_block * BLOCK_SIZE + 1;
-    int nx, i, j;
+    int i, j;
     double dm = 0;
-    for (nx = 0; nx < BLOCK_SIZE; nx++) {
-        for (i = 0; i < nx + 1; i++) {
-            j = nx - i + j_upper_left;
-            i += i_upper_left;
+    for (i = i_upper_left; i < i_upper_left + BLOCK_SIZE; i++) {
+        for (j = j_upper_left; j < j_upper_left + BLOCK_SIZE; j++) {
             temp = u[i][j];
-            u[i][j] = 0.25 * (u[i - 1][j] + u[i + 1][j] + u[i][j - 1] + u[i][j + 1] - h * h * f[i][j]);
+            dp->u[i][j] = 0.25 * (u[i - 1][j] + u[i + 1][j] + u[i][j - 1] + u[i][j + 1] - h * h * f[i][j]);
             d = fabs(temp - u[i][j]);
             if (dm < d) dm = d;
-            i -= i_upper_left;
-        }
-    }
-    for (nx = BLOCK_SIZE - 1; nx > 0; nx--) {
-        for (i = BLOCK_SIZE - nx; i < BLOCK_SIZE; i++) {
-            j = 2 * (BLOCK_SIZE - 1) - nx - i + 1 + j_upper_left;
-            i += i_upper_left;
-            temp = u[i][j];
-            u[i][j] = 0.25 * (u[i - 1][j] + u[i + 1][j] + u[i][j - 1] + u[i][j + 1] - h * h * f[i][j]);
-            d = fabs(temp - u[i][j]);
-            if (dm < d) dm = d;
-            i -= i_upper_left;
         }
     }
     return dm;
@@ -111,7 +98,6 @@ size_t approximate_dirichlet(dirichlet_problem* dp) {
     NB = dp->N / BLOCK_SIZE;
     double dmax = 0, d = 0;
     double* dm = calloc(NB, sizeof(double));
-    double** u = dp->u;
     int i, j;
     do {
         k++;
