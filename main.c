@@ -3,9 +3,10 @@
 #include <stdlib.h>
 #include <math.h>
 
+#define MIN(a,b) (((a)<(b))?(a):(b))
 
 const size_t BLOCK_SIZE = 64;
-const double EPS = 0.1;
+const double EPS = 0.0001;
 
 typedef struct dirichlet_problem {
     size_t N;
@@ -74,16 +75,18 @@ double** create_grid_with_borders(size_t N) {
     return grid;
 }
 
-
 double proccess_block(dirichlet_problem* dp, size_t i_block, size_t j_block) {
     double d = 0, temp, h = dp->h;
     double** u = dp->u;
     double** f = dp->f;
-    size_t i_upper_left = i_block * BLOCK_SIZE + 1, j_upper_left = j_block * BLOCK_SIZE + 1;
+    size_t i_upper_left = i_block * BLOCK_SIZE + 1;
+    size_t j_upper_left = j_block * BLOCK_SIZE + 1;
+    size_t i_lower_right = i_upper_left + MIN(BLOCK_SIZE, dp->N - i_upper_left + 1);
+    size_t j_lower_right = j_upper_left + MIN(BLOCK_SIZE, dp->N - j_upper_left + 1);
     int i, j;
     double dm = 0;
-    for (i = i_upper_left; i < i_upper_left + BLOCK_SIZE; i++) {
-        for (j = j_upper_left; j < j_upper_left + BLOCK_SIZE; j++) {
+    for (i = i_upper_left; i < i_lower_right; i++) {
+        for (j = j_upper_left; j < j_lower_right; j++) {
             temp = u[i][j];
             dp->u[i][j] = 0.25 * (u[i - 1][j] + u[i + 1][j] + u[i][j - 1] + u[i][j + 1] - h * h * f[i][j]);
             d = fabs(temp - u[i][j]);
@@ -96,6 +99,7 @@ double proccess_block(dirichlet_problem* dp, size_t i_block, size_t j_block) {
 size_t approximate_dirichlet(dirichlet_problem* dp) {
     int k = 0, nx, NB;
     NB = dp->N / BLOCK_SIZE;
+    NB += (dp->N % BLOCK_SIZE) == 0 ? 0 : 1;
     double dmax = 0, d = 0;
     double* dm = calloc(NB, sizeof(double));
     int i, j;
@@ -156,24 +160,27 @@ int main()
     size_t s, k;
     dirichlet_problem dp;
     size_t grids[] = { 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 2000, 3000 };
-    size_t threads[] = { 1, 12 };
+    size_t threads[] = { 1, 2, 4, 8, 12 };
     size_t length_of_grids = sizeof(grids) / sizeof(size_t);
     size_t length_of_threads = sizeof(threads) / sizeof(size_t);
-    double t1, t2;
-    printf("-------------------------------------------------------------------------------------------------\n");
-    printf("|\tSize of grid\t|\tIterations\t|\tTime\t\t|\tThreads\t\t|\n");
-    printf("-------------------------------------------------------------------------------------------------\n");
+    double t, t1, t2, acceleration;
+    printf("-------------------------------------------------------------------------------------------------------------------------\n");
+    printf("|\tSize of grid\t|\tIterations\t|\tTime\t\t|\tAcceleration\t|\tThreads\t\t|\n");
+    printf("-------------------------------------------------------------------------------------------------------------------------\n");
     for (int i = 0; i < length_of_grids; i++) {
         s = grids[i];
-        s = ((s / BLOCK_SIZE + (s % BLOCK_SIZE == 0 ? 0 : 1)) * BLOCK_SIZE);
         for (int j = 0; j < length_of_threads; j++) {
             size_t thread = threads[j];
-            dp = init_dp(&f1, &g1, s);
+            dp = init_dp(&f2, &g2, s);
             omp_set_num_threads(thread);
             t1 = omp_get_wtime();
             k = approximate_dirichlet(&dp);
             t2 = omp_get_wtime();
-            printf("|\tN = %4lu\t|\tk = %4lu\t|\tt = %7.2f\t|\tthreads = %2lu\t|\n", s, k, t2 - t1, thread);
+            if (thread == 1) {
+                t = t2 - t1;
+            }
+            acceleration = t / (t2 - t1);
+            printf("|\t%9lu\t|\t%9lu\t|\t%7.2f\t\t|\t%9.2f\t|\t%9lu\t|\n", s, k, t2 - t1, acceleration, thread);
             free_dp(dp);
         }
     }
