@@ -2,11 +2,12 @@
 #include <omp.h>
 #include <stdlib.h>
 #include <math.h>
+#include "mathFuns.h"
 
 #define MIN(a,b) (((a)<(b))?(a):(b))
 
 const size_t BLOCK_SIZE = 64;
-const double EPS = 0.0001;
+const double EPS = 0.01;
 
 typedef struct dirichlet_problem {
     size_t N;
@@ -157,31 +158,57 @@ dirichlet_problem init_dp(double (*f_fun)(double, double), double (*g_fun)(doubl
 
 int main()
 {
+    size_t grids[] = { 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 2000, 3000 };
+    size_t threads[] = { 1, 2, 8, 12 };
+    size_t rounds = 10;
+
+    double t1, t2, acceleration;
     size_t s, k;
     dirichlet_problem dp;
-    size_t grids[] = { 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 2000, 3000 };
-    size_t threads[] = { 1, 2, 4, 8, 12 };
     size_t length_of_grids = sizeof(grids) / sizeof(size_t);
     size_t length_of_threads = sizeof(threads) / sizeof(size_t);
-    double t, t1, t2, acceleration;
-    printf("-------------------------------------------------------------------------------------------------------------------------\n");
-    printf("|\tSize of grid\t|\tIterations\t|\tTime\t\t|\tAcceleration\t|\tThreads\t\t|\n");
-    printf("-------------------------------------------------------------------------------------------------------------------------\n");
-    for (int i = 0; i < length_of_grids; i++) {
-        s = grids[i];
-        for (int j = 0; j < length_of_threads; j++) {
-            size_t thread = threads[j];
-            dp = init_dp(&f2, &g2, s);
-            omp_set_num_threads(thread);
-            t1 = omp_get_wtime();
-            k = approximate_dirichlet(&dp);
-            t2 = omp_get_wtime();
-            if (thread == 1) {
-                t = t2 - t1;
+    size_t amount_of_threads;
+    size_t iterations[length_of_grids];
+    double results[rounds][length_of_grids][length_of_threads];
+    // running the algorithm, collecting measurements
+    for (int round = 0; round < rounds; round++) {
+        printf("-------------\nRound %d\n-------------\n", round);
+        for (int i = 0; i < length_of_grids; i++) {
+            s = grids[i];
+            for (int j = 0; j < length_of_threads; j++) {
+                amount_of_threads = threads[j];
+                dp = init_dp(&f2, &g2, s);
+                omp_set_num_threads(amount_of_threads);
+                t1 = omp_get_wtime();
+                k = approximate_dirichlet(&dp);
+                t2 = omp_get_wtime();
+                results[round][i][j] = t2 - t1;
+                printf("Grid: %lu, Threads: %lu\n", s, amount_of_threads);
+                free_dp(dp);
             }
-            acceleration = t / (t2 - t1);
-            printf("|\t%9lu\t|\t%9lu\t|\t%7.2f\t\t|\t%9.2f\t|\t%9lu\t|\n", s, k, t2 - t1, acceleration, thread);
-            free_dp(dp);
+            iterations[i] = k;
+        }
+    }
+    // printing of results
+    printf("---------------------------------------------------------------------------------------------------------------------------------------------------------\n");
+    printf("|\tSize of grid\t|\tIterations\t|\tTime (mean)\t|\tAcceleration (mean)\t|\tSD of time\t|\tThreads\t\t|\n");
+    printf("---------------------------------------------------------------------------------------------------------------------------------------------------------\n");
+    double* result = malloc(rounds * sizeof(double));
+    double mean_result, SD_result, one_thread_result;
+    for (int i = 0; i < length_of_grids; i++) {
+        for (int j = 0; j < length_of_threads; j++) {
+            for (int round = 0; round < rounds; round++) {
+                result[round] = results[round][i][j];
+            }
+            amount_of_threads = threads[j];
+            mean_result = calculateMean(result, rounds);
+            SD_result = calculateSD(result, rounds);
+            if (amount_of_threads == 1)
+                one_thread_result = mean_result;
+            acceleration = one_thread_result / mean_result;
+            s = grids[i];
+            k = iterations[i];
+            printf("|\t%9lu\t|\t%9lu\t|\t%7.2f\t\t|\t%9.2f\t\t|\t%9.4f\t|\t%9lu\t|\n", s, k, mean_result, acceleration, SD_result, amount_of_threads);
         }
     }
     return 0;
