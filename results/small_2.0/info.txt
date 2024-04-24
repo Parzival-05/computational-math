@@ -1,0 +1,9 @@
+numpy
+Sum of norms: 62124.104989638276 | Time: 0.23094511032104492 (s.)
+
+advanced
+Sum of norms: 74964.34178794257 | Time: 0.30200624465942383 (s.)
+
+simple
+Sum of norms: 62124.05286560475 | Time: 0.6761178970336914 (s.)
+

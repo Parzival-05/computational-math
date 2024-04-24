@@ -1,0 +1,12 @@
+./static/kot.jpg ./results/kot_2.0/kot_numpy.bmp
+Sum of norms: 337205.6620793541
+4.778363227844238 s.
+
+./static/kot.jpg ./results/kot_2.0/kot_advanced.bmp
+Sum of norms: 337569.2092331602
+2.0259945392608643 s.
+
+./static/kot.jpg ./results/kot_2.0/kot_simple.bmp
+Sum of norms: 337203.6413941167
+22.564478874206543 s.
+
