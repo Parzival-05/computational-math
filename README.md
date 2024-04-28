@@ -41,12 +41,6 @@
 
 [Результаты замеров.](./results/SVD_2.0/info.txt)
 
-<style>
-  table {
-    text-align: center;
-  }
-</style>
-
 <table>
   <tr>
     <td>origin</td>
